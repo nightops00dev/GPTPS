@@ -49,6 +49,7 @@ typedef struct {
     gptps_handle h;
     gptps_status outcome; /* written only by the host thread */
     int submitted;
+    int closed;           /* terminal outcome consumed; do not await again */
 } ledger_row;
 
 typedef struct {
@@ -232,10 +233,13 @@ int main(void)
      * until it finishes, and a failed inventory means abort, not retry. */
     {
         gptps_handle h_inv;
+        ledger_row *r;
         REQUIRE(gptps_submit(e, "inventory", NULL, 0, &h_inv) == GPTPS_OK);
-        ledger_add("inventory", h_inv);
+        r = ledger_add("inventory", h_inv);
         REQUIRE(gptps_await_wait(aw, h_inv, WAIT_MS, NULL, NULL, &st) == GPTPS_OK);
         REQUIRE(st == GPTPS_OK);
+        r->outcome = st;
+        r->closed = 1; /* consumed here; the wait loop below must not re-await it */
     }
 
     /* 01:00 - the ramp: re-budgeting an existing resource is the live
@@ -268,6 +272,8 @@ int main(void)
      * MRP means the rollup is withheld and the night is flagged. */
     REQUIRE(gptps_await_wait(aw, r_mrp->h, WAIT_MS, NULL, NULL, &st) == GPTPS_OK);
     REQUIRE(st == GPTPS_OK);
+    r_mrp->outcome = st;
+    r_mrp->closed = 1; /* consumed here; the wait loop below must not re-await it */
     {
         gptps_handle h_roll;
         REQUIRE(gptps_submit(e, "rollup", "after-mrp", 9, &h_roll) == GPTPS_OK);
@@ -278,6 +284,7 @@ int main(void)
      * everything else must finish. */
     for (i = 0; i < (int)g.n; ++i) {
         ledger_row *r = &g.row[i];
+        if (r->closed) continue; /* outcome already consumed by an earlier gate */
         if (r == r_roll) {
             REQUIRE(gptps_await_wait(aw, r->h, WAIT_MS, &res, &res_len, &st) == GPTPS_OK);
             REQUIRE(st == GPTPS_OK);
