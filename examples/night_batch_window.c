@@ -191,9 +191,10 @@ int main(void)
     gptps_set_event_cb(e, on_event, NULL);
 
     /* The budget starts tight (one "core"); the ramp at 01:00 widens it.
-     * MRP costs 2, so before the ramp only single-slot jobs can be admitted. */
+     * MRP costs 2, so before the ramp only single-slot jobs can be admitted.
+     * (Costs attach to a REGISTERED task type, so they are set below, after
+     * gptps_register_task.) */
     REQUIRE(gptps_define_resource(e, "cpu", 1) == GPTPS_OK);
-    REQUIRE(gptps_set_task_resource_cost(e, "mrp", "cpu", 2) == GPTPS_OK);
 
     /* The wait must be installed BEFORE the first submit: completions can
      * race the submit itself, and only an already-registered observer can
@@ -222,6 +223,8 @@ int main(void)
     d.name = "report";    d.run = report;
     d.default_policy.max_retries = 0;
     REQUIRE(gptps_register_task(e, &d) == GPTPS_OK);
+    /* MRP holds two "cores" against the named resource; everything else one. */
+    REQUIRE(gptps_set_task_resource_cost(e, "mrp", "cpu", 2) == GPTPS_OK);
     /* Reports yield to everything else; priorities are stamped at submit. */
     REQUIRE(gptps_set_task_priority(e, "report", -5) == GPTPS_OK);
 
