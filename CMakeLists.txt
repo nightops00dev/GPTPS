@@ -788,6 +788,18 @@ target_link_libraries(example_embedded PRIVATE gptps)
 add_test(NAME example_embedded COMMAND example_embedded)
 set_tests_properties(example_embedded PROPERTIES TIMEOUT 20)
 
+# The nightly batch window from the issue #12 discussion: host-owned job graph
+# (success gating via gptps_await), a named-resource ramp, a host-thread ledger,
+# and a bounded morning re-drive of dead letters.
+if(TARGET gptps_await)
+add_executable(example_night_batch examples/night_batch_window.c)
+target_include_directories(example_night_batch
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/addons)
+target_link_libraries(example_night_batch PRIVATE gptps_await)
+add_test(NAME example_night_batch COMMAND example_night_batch)
+set_tests_properties(example_night_batch PROPERTIES TIMEOUT 30)
+endif()
+
 # live terminal dashboard demo (self-skips the live loop without a TTY)
 if(TARGET gptps_tui)
 add_executable(example_dashboard examples/dashboard.c)
