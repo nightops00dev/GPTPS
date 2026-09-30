@@ -174,7 +174,7 @@ int main(void)
     gptps_status st = GPTPS_OK;
     void *res = NULL;
     size_t res_len = 0;
-    ledger_row *r_inv, *r_mrp, *r_roll = NULL, *r3;
+    ledger_row *r_mrp, *r_roll = NULL, *r3;
     int ok = 0, i;
 
 #define REQUIRE(expr) do { if (!(expr)) { \
@@ -230,7 +230,7 @@ int main(void)
     {
         gptps_handle h_inv;
         REQUIRE(gptps_submit(e, "inventory", NULL, 0, &h_inv) == GPTPS_OK);
-        r_inv = ledger_add("inventory", h_inv);
+        ledger_add("inventory", h_inv);
         REQUIRE(gptps_await_wait(aw, h_inv, WAIT_MS, NULL, NULL, &st) == GPTPS_OK);
         REQUIRE(st == GPTPS_OK);
     }
